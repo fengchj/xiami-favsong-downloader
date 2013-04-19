@@ -98,7 +98,7 @@ def download_music(location, song_name):
 
 def main():
 	#song_id = raw_input()
-	user_id = '3270716'
+	user_id = raw_input()
 	user_fav_url = 'http://www.xiami.com/space/lib-song/u/' + user_id + '/page/'
 	page_no = 1
 	song_id_list = []
