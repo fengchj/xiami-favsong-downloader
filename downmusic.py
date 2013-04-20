@@ -3,13 +3,11 @@
 
 import urllib
 import urllib2
-import random
 import re
 import sys
 import os
 import time
 import math
-import mutagen
 from mutagen.easyid3 import EasyID3
 
 
@@ -18,7 +16,9 @@ def parse_xml(song_id):
 	xml_loc = 'http://www.xiami.com/song/playlist/id/' + song_id + '/object_name/default/object_id/0'
 	#print xml_loc
 
-	headers = {'User-Agent' : 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_2) Chrome/24.0.1312.57'}
+	headers = {
+		'User-Agent' : 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_2) Chrome/24.0.1312.57'
+	}
 	request = urllib2.Request(xml_loc, headers = headers)
 	response = urllib2.urlopen(request)
 	text = response.read()
