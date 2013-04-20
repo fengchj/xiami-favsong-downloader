@@ -1,12 +1,17 @@
 #!/usr/bin/python
+#coding: utf-8
 
 import urllib
 import urllib2
 import random
 import re
 import sys
+import os
 import time
 import math
+import mutagen
+from mutagen.easyid3 import EasyID3
+
 
 def parse_xml(song_id):
 	#print song_id
@@ -22,7 +27,7 @@ def parse_xml(song_id):
 	loc_reg=r"<location>(.*)</location>"
 	match = re.search(loc_reg, text)
 	if match:
-		location = match.group(1)
+		location = match.group(1).strip()
 		#print location
 	else:
 		print 'location not match'
@@ -30,7 +35,7 @@ def parse_xml(song_id):
 	song_title_reg=r"<title><\!\[CDATA\[(.*)\]\]></title>"
 	match = re.search(song_title_reg, text)
 	if match:
-		song_title = match.group(1)
+		song_title = match.group(1).strip()
 		#print song_title
 	else:
 		print 'song_title not match'
@@ -38,7 +43,7 @@ def parse_xml(song_id):
 	artist_reg=r"<artist><\!\[CDATA\[(.*)\]\]></artist>"
 	match = re.search(artist_reg, text)
 	if match:
-		artist = match.group(1)
+		artist = match.group(1).strip()
 		#print artist
 	else:
 		print 'artist not match'
@@ -87,15 +92,37 @@ def parse_location(location):
 
 	return target
 
-def download_music(location, song_name):
-	path = '/Users/fengchj/temp/music/' + song_name +  '.mp3'
+def download_music(location, song_name, base_dir):
+	if not os.path.isdir(base_dir):
+		os.mkdir(base_dir)
+
+	path = base_dir + '/' + song_name +  '.mp3'
 	urllib.urlretrieve(location ,path)
+
+	write_id3(path, song_name)
+
 	print 'download ' + song_name + ' done!'
 
-def batch_download_music(song_id_list):
+def write_id3(path, song_name):
+	#write id3 info to song.
+	try:
+		audio = EasyID3(path)
+	except Exception, e:
+		#while source track doesn't have ID3 structure. malloc new EasyID3().
+		audio = EasyID3()
+	song_info = song_name.split(' - ')
+	artist = song_info[0]
+	title = song_info[1]
+	audio["artist"] = unicode(artist, 'utf-8')
+	audio["title"] = unicode(title, 'utf-8')
+	audio.save(path)
+	#print audio
+
+def batch_download_music(song_id_list, base_dir):
 	print song_id_list
 	#print len(song_id_list)
 
+	count = 0
 	for song_id in song_id_list:
 		#print song_id
 
@@ -107,18 +134,20 @@ def batch_download_music(song_id_list):
 			try:
 				(location, song_title, artist) = parse_xml(song_id)
 				target = parse_location(location)
-				download_music(target, artist + ' - ' + song_title)
+				download_music(target, artist + ' - ' + song_title, base_dir)
+				count = count + 1
 				isFail = False
 			except Exception, e:
 				print ('song_id: %s') % song_id,
 				print e
+				#raise e
 				time.sleep(math.pow(2, trytime))
 				isFail = True
 				trytime = trytime + 1
 		if trytime == RETRY_TIME_LIMIT:
 			print '!!!!!!!!!!!!!!!!! ' + song_id + ' (' + artist + '-' + song_title + ') download failed !!!!!!!!!!!!!!!!!!!!!'
 
-	print ('%d songs download!') % len(song_id_list)
+	print ('%d songs download successful! %d songs download failed!') % (count, len(song_id_list) - count)
 
 def get_song_id_list(user_id):
 	user_fav_url = 'http://www.xiami.com/space/lib-song/u/' + user_id + '/page/'
@@ -126,7 +155,7 @@ def get_song_id_list(user_id):
 	song_id_list = []
 	while True:
 		url = user_fav_url + str(page_no)
-		#print url
+		print url
 		headers = {'User-Agent' : 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_2) Chrome/24.0.1312.57'}
 		request = urllib2.Request(url, headers = headers)
 		response = urllib2.urlopen(request)
@@ -146,9 +175,13 @@ def main():
 	user_id = raw_input('input your Xiami\'s userid: ')
 	#user_id = '3270716'
 
+	base_dir = raw_input('input your music lib directory (current dir by default): ')
+	if not base_dir:
+		base_dir = 'music'
+
 	song_id_list = get_song_id_list(user_id)
 
-	batch_download_music(song_id_list)
+	batch_download_music(song_id_list, base_dir)
 	 
 if __name__ == '__main__' :
 	main()
