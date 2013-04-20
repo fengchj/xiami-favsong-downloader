@@ -4,20 +4,16 @@ import urllib
 import urllib2
 import random
 import re
-
-def cbk(a, b, c):
-	per = 100.0 * a * b / c
-	if per > 100:
-		per = 100
-	print '%.2f%%' % per
+import sys
+import time
+import math
 
 def parse_xml(song_id):
 	#print song_id
 	xml_loc = 'http://www.xiami.com/song/playlist/id/' + song_id + '/object_name/default/object_id/0'
 	#print xml_loc
 
-	headers = {'User-Agent' : 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:14.0) Gecko/20100101 Firefox/14.0.1'}
-
+	headers = {'User-Agent' : 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_2) Chrome/24.0.1312.57'}
 	request = urllib2.Request(xml_loc, headers = headers)
 	response = urllib2.urlopen(request)
 	text = response.read()
@@ -27,7 +23,7 @@ def parse_xml(song_id):
 	match = re.search(loc_reg, text)
 	if match:
 		location = match.group(1)
-		print location
+		#print location
 	else:
 		print 'location not match'
 
@@ -86,7 +82,7 @@ def parse_location(location):
 	#print unencypt_loc
 	#print(urllib.unquote(unencypt_loc))
 	target = urllib.unquote(unencypt_loc).replace('^','0')
-	print('unencypt_location: %s') % target
+	#print('unencypt_location: %s') % target
 
 
 	return target
@@ -96,16 +92,42 @@ def download_music(location, song_name):
 	urllib.urlretrieve(location ,path)
 	print 'download ' + song_name + ' done!'
 
-def main():
-	#song_id = raw_input()
-	user_id = raw_input()
+def batch_download_music(song_id_list):
+	print song_id_list
+	#print len(song_id_list)
+
+	for song_id in song_id_list:
+		#print song_id
+
+		#if errors ocurs during the download processing, re-try 3 times.
+		RETRY_TIME_LIMIT  = 3
+		isFail = True
+		trytime = 0
+		while isFail and  trytime < RETRY_TIME_LIMIT:
+			try:
+				(location, song_title, artist) = parse_xml(song_id)
+				target = parse_location(location)
+				download_music(target, artist + ' - ' + song_title)
+				isFail = False
+			except Exception, e:
+				print ('song_id: %s') % song_id,
+				print e
+				time.sleep(math.pow(2, trytime))
+				isFail = True
+				trytime = trytime + 1
+		if trytime == RETRY_TIME_LIMIT:
+			print '!!!!!!!!!!!!!!!!! ' + song_id + ' (' + artist + '-' + song_title + ') download failed !!!!!!!!!!!!!!!!!!!!!'
+
+	print ('%d songs download!') % len(song_id_list)
+
+def get_song_id_list(user_id):
 	user_fav_url = 'http://www.xiami.com/space/lib-song/u/' + user_id + '/page/'
 	page_no = 1
 	song_id_list = []
 	while True:
 		url = user_fav_url + str(page_no)
-		print url
-		headers = {'User-Agent' : 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:14.0) Gecko/20100101 Firefox/14.0.1'}
+		#print url
+		headers = {'User-Agent' : 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_2) Chrome/24.0.1312.57'}
 		request = urllib2.Request(url, headers = headers)
 		response = urllib2.urlopen(request)
 		text = response.read()
@@ -118,18 +140,15 @@ def main():
 			break
 		song_id_list += result
 		page_no = page_no + 1
+	return song_id_list
 
-		
-	print song_id_list
-	print len(song_id_list)
+def main():
+	user_id = raw_input('input your Xiami\'s userid: ')
+	#user_id = '3270716'
 
-	for song_id in song_id_list:
-		#song_id = '72234'
-		#print song_id
-		(location, song_title, artist) = parse_xml(song_id)
+	song_id_list = get_song_id_list(user_id)
 
-		target = parse_location(location)
-		download_music(target, artist + ' - ' + song_title)
-	print ('%d songs download!') % len(song_id_list) 
+	batch_download_music(song_id_list)
+	 
 if __name__ == '__main__' :
 	main()
