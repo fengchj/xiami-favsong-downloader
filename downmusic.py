@@ -101,7 +101,11 @@ def download_music(location, song_name, base_dir):
 
 	write_id3(path, song_name)
 
-	print 'download ' + song_name + ' done!'
+	if os.path.getsize(path) < 2048 :
+		return False
+	else:
+		print 'download ' + song_name + ' done!'
+		return True
 
 def write_id3(path, song_name):
 	#write id3 info to song.
@@ -134,7 +138,9 @@ def batch_download_music(song_id_list, base_dir):
 			try:
 				(location, song_title, artist) = parse_xml(song_id)
 				target = parse_location(location)
-				download_music(target, artist + ' - ' + song_title, base_dir)
+				rt = download_music(target, artist + ' - ' + song_title, base_dir)
+				if rt == False :
+					raise Exception
 				count = count + 1
 				isFail = False
 			except Exception, e:
@@ -162,7 +168,7 @@ def get_song_id_list(user_id):
 		text = response.read()
 		#print text
 
-		song_reg=r"\"/song/(\d{1,20})\""
+		song_reg=r"\"lib_song_(\d{1,20})\""
 		result = re.findall(song_reg, text, re.S)
 		#print result
 		if len(result) == 0 :
